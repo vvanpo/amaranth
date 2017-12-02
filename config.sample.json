@@ -1,0 +1,6 @@
+{
+    "domain":   "localhost",
+    "port":     1443,
+    "tls":      true,
+    "database": "postgres:///var/run/postgresql/cms?sslmode=disable"
+}
