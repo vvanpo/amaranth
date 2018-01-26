@@ -29,6 +29,7 @@ type Server struct {
 	hs   http.Server
 }
 
+// readConfig parses the config.json file in the instance directory
 func readConfig(dir string) (c *Config, err error) {
 	file, err := ioutil.ReadFile(filepath.Join(dir, "config.json"))
 	if err != nil {
