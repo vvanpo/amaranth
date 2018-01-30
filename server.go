@@ -78,5 +78,6 @@ func main() {
 		log.Fatal(err)
 	}
 	var s Server
+	s.path = *dir
 	log.Print(s.Start(conf))
 }
