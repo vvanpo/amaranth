@@ -1,10 +1,9 @@
-package main
+package cms
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"flag"
 	_ "github.com/lib/pq"
 	"io/ioutil"
 	"log"
@@ -14,52 +13,30 @@ import (
 	"time"
 )
 
-type Config struct {
-	Domain string
-	Port   int
-	TLS    bool
-	// https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
-	Database string
-}
-
 type Server struct {
 	path string
-	conf Config
+	conf struct {
+		Domain string
+		Port   int
+		TLS    bool
+		// https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+		Database string
+	}
 	db   *sql.DB
 	hs   http.Server
 }
 
-// readConfig parses the config.json file in the instance directory
-func readConfig(dir string) (c *Config, err error) {
-	file, err := ioutil.ReadFile(filepath.Join(dir, "config.json"))
-	if err != nil {
-		return
-	}
-	err = json.Unmarshal(file, &c)
-	return
-}
-
-func (s *Server) loadConfig(c *Config) (err error) {
-	s.conf = *c
-	s.db, err = sql.Open("postgres", s.conf.Database)
-	if err != nil {
-		return
-	}
-	s.hs.Addr = s.conf.Domain + ":" + strconv.Itoa(s.conf.Port)
-	s.hs.Handler = http.NewServeMux()
-	return
-}
-
-func (s *Server) Start(c *Config) error {
-	if err := s.loadConfig(c); err != nil {
-		return err
+func NewServer(path string) (s *Server, err error) {
+	s = &Server{path: path}
+	if err := s.readConfig(); err != nil {
+		return nil, err
 	}
 	if s.conf.TLS {
 		certFile := filepath.Join(s.path, "certificate.pem")
 		keyFile := filepath.Join(s.path, "key.pem")
-		return s.hs.ListenAndServeTLS(certFile, keyFile)
+		return s, s.hs.ListenAndServeTLS(certFile, keyFile)
 	}
-	return s.hs.ListenAndServe()
+	return s, s.hs.ListenAndServe()
 }
 
 func (s *Server) Stop() error {
@@ -70,14 +47,21 @@ func (s *Server) Stop() error {
 	return err
 }
 
-func main() {
-	dir := flag.String("d", "", "instance directory path")
-	flag.Parse()
-	conf, err := readConfig(*dir)
+// readConfig parses the config.json file in the instance directory
+func (s *Server) readConfig() error {
+	file, err := ioutil.ReadFile(filepath.Join(s.path, "config.json"))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	var s Server
-	s.path = *dir
-	log.Print(s.Start(conf))
+	err = json.Unmarshal(file, s.conf)
+	if err != nil {
+		return err
+	}
+	s.db, err = sql.Open("postgres", s.conf.Database)
+	if err != nil {
+		return err
+	}
+	s.hs.Addr = s.conf.Domain + ":" + strconv.Itoa(s.conf.Port)
+	s.hs.Handler = http.NewServeMux()
+	return nil
 }
