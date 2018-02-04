@@ -1,67 +1,48 @@
-package cms
+package cmf
 
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
-	_ "github.com/lib/pq"
-	"io/ioutil"
-	"log"
 	"net/http"
-	"path/filepath"
-	"strconv"
-	"time"
 )
 
+// Server manages the application state.
 type Server struct {
-	path string
-	conf struct {
-		Domain string
-		Port   int
-		TLS    bool
-		// https://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
-		Database string
-	}
-	db   *sql.DB
-	hs   http.Server
+	dir  string
+	*config
+	db   sql.DB
+	mux  http.Handler
 }
 
-func NewServer(path string) (s *Server, err error) {
-	s = &Server{path: path}
-	if err := s.readConfig(); err != nil {
+// New initializes a new server instance using the configuration details in the
+// passed directory.
+func New(dir string) (*Server, error) {
+	// The instance directory needs to be stored as an absolute path, in case
+	// the process changes its working directory later.
+	dir = filepath.Abs(dir)
+	// Check for and create lock file.
+
+	conf, err := readConfig(dir)
+	if err != nil {
 		return nil, err
 	}
-	if s.conf.TLS {
-		certFile := filepath.Join(s.path, "certificate.pem")
-		keyFile := filepath.Join(s.path, "key.pem")
-		return s, s.hs.ListenAndServeTLS(certFile, keyFile)
+	db, err := connectDB(conf.Database)
+	if err != nil {
+		return nil, err
 	}
-	return s, s.hs.ListenAndServe()
+	s := &Server{dir, conf, db}
+	return s, nil
+}
+
+func (s *Server) Reload() error {
+	conf, err := ReadConfig(s.dir)
+	if err != nil {
+		return err
+	}
+	s.conf = conf
+	return nil
 }
 
 func (s *Server) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err := s.hs.Shutdown(ctx)
-	s.db.Close()
-	return err
-}
 
-// readConfig parses the config.json file in the instance directory
-func (s *Server) readConfig() error {
-	file, err := ioutil.ReadFile(filepath.Join(s.path, "config.json"))
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(file, s.conf)
-	if err != nil {
-		return err
-	}
-	s.db, err = sql.Open("postgres", s.conf.Database)
-	if err != nil {
-		return err
-	}
-	s.hs.Addr = s.conf.Domain + ":" + strconv.Itoa(s.conf.Port)
-	s.hs.Handler = http.NewServeMux()
-	return nil
 }
