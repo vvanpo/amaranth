@@ -29,3 +29,5 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	e := exchange{s, req, w}
 }*/
 
+type I18n struct {
+}

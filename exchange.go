@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-// The exchange object manages state for a single HTTP request/response pair.
-type exchange struct {
+// The Exchange object manages state for a single HTTP request/response pair.
+type Exchange struct {
 	*Server
 	*http.Request
 	http.ResponseWriter
