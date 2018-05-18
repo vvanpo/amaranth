@@ -30,4 +30,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }*/
 
 type I18n struct {
+	rt StaticRouter
+}
+
+func (i *I18n) Serve(ctx context.Context, ex *Exchange) error {
+
 }

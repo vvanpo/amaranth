@@ -8,10 +8,10 @@ import (
 
 // Server manages the application state.
 type Server struct {
-	dir  string
+	dir string
 	*config
-	db   sql.DB
-	mux  http.Handler
+	db  sql.DB
+	mux http.Handler
 }
 
 // New initializes a new server instance using the configuration details in the
