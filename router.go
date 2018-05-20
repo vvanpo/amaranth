@@ -31,8 +31,13 @@ type paramRouter struct {
 }
 
 func (p *paramRouter) Route(path string) (Resource, error) {
+
 }
 
-func ParamRouter(name string, param regexp.Regexp, r Resource) Router {
-	return &paramRouter{name, param.Copy(), r}
+func ParamRouter(name string, regexp string, r Resource) (Router, error) {
+	param, err := regexp.Compile(regexp)
+	if err != nil {
+		return nil, err
+	}
+	return &paramRouter{name, param.Copy(), r}, nil
 }
